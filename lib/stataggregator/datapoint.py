@@ -6,5 +6,5 @@ class DataPoint:
         self.timestamp = time.time()
 
     def __repr__(self):
-        return "%s: %r" % (self.data, self.timestamp)
+        return "%s: %r" % (self.timestamp, self.data)
 
