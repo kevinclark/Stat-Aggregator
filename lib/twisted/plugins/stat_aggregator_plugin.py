@@ -94,7 +94,7 @@ class ResponderProtocol(basic.LineReceiver):
         log.msg("Received line: %s" % line)
         
         try:
-            timestamp = int(line)
+            timestamp = float(line)
         except ValueError:
             log.msg("Bad timestamp")
             # TODO: Respond with an error
@@ -110,7 +110,7 @@ class ResponderProtocol(basic.LineReceiver):
 
     def connectionLost(self, _):
         log.msg("Connection lost")
-        self.factory.server.transport.loseConnection()
+        self.loseConnection()
 
 # TODO: Extract to class this and AggregatorFactory
 #       When you do this, it's going to mess up logging messages
