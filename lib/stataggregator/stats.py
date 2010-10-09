@@ -20,6 +20,7 @@
 from twisted.application import internet
 from twisted.internet import protocol, task
 from twisted.protocols import basic
+from twisted.python import log
 
 import simplejson as json
 
