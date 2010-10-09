@@ -1,4 +1,4 @@
-from twisted.application.service import IServiceMaker
+from twisted.application.service import IServiceMaker, MultiService
 from twisted.application import internet
 from twisted.python import usage
 from twisted.protocols import basic
@@ -8,8 +8,11 @@ from twisted.internet import protocol
 from zope.interface import implements
 
 import simplejson as json
+import time
 
 JSONDecodeError = json.decoder.JSONDecodeError
+
+buffers = {}
 
 # TODO: Pull this out
 class CircularBuffer:
@@ -20,18 +23,21 @@ class CircularBuffer:
         self.buffer.append(data)
         self.buffer.pop(0)
 
-class Options(usage.Options):
-    
-    optParameters = [
-        ["port", "p", 1234, "The port number to listen on"],
-    ]
+
+class DataPoint:
+    def __init__(self, data):
+        self.data = data
+        self.timestamp = time.time()
+
+    def __repr__(self):
+        return "%s: %r" % (self.data, self.timestamp)
 
 
+# TODO: Pull this out too
 class AggregatorProtocol(basic.LineReceiver):
-    """Protocol for receiving stats data"""
+    """Protocol for receiving stats data as key-value json pairs"""
 
     options = {}
-    buffers = {}
 
     def connectionMade(self):
         log.msg("There's been a connection")
@@ -43,20 +49,18 @@ class AggregatorProtocol(basic.LineReceiver):
             stats = json.loads(line)
 
             for stat, value in stats.items():
-                if not self.buffers.__contains__(stat):
+                if not buffers.__contains__(stat):
                     # TODO: Make this value configurable
-                    self.buffers[stat] = CircularBuffer(10)
+                    buffers[stat] = CircularBuffer(10)
 
-                self.buffers[stat].put(value) 
+                buffers[stat].put(DataPoint(value)) 
 
         except JSONDecodeError:
             log.msg("Huh?")
 
         log.msg("Current buffers:")
-        for name, buf in self.buffers.items():
+        for name, buf in buffers.items():
             log.msg("%s: %r" % (name, buf.buffer))
-
-        # now we parse the data
 
     def connectionLost(self, _):
         log.msg("Connection lost")
@@ -75,6 +79,46 @@ class AggregatorFactory(protocol.ServerFactory):
         p.options = self.options
         return p
 
+
+
+# TODO: Pull this out too
+class ResponderProtocol(basic.LineReceiver):
+    """Protocol for returning stats data"""
+
+    def connectionMade(self):
+        log.msg("There's been a connection")
+
+    def lineReceived(self, line):
+        log.msg("Received line: %s" % line)
+
+    def connectionLost(self, _):
+        log.msg("Connection lost")
+        self.factory.server.transport.loseConnection()
+
+# TODO: Extract to class this and AggregatorFactory
+#       When you do this, it's going to mess up logging messages
+#       because of the class name - investigate contexts
+class ResponderFactory(protocol.ServerFactory):
+    """Factory for our response server"""
+
+    protocol = ResponderProtocol
+
+    def __init__(self, options):
+        self.options = options
+
+    def buildProtocol(self, addr):
+        p = protocol.ServerFactory.buildProtocol(self, addr)
+        p.options = self.options
+        return p
+
+
+class Options(usage.Options):
+    
+    optParameters = [
+        ["aggregation-port", "a", 1234, "The port number to listen on for new data"],
+        ["port", "p", 4321, "The port number to listen on for returning data"],
+    ]
+
 class AggregatorMaker(object):
     implements(IServiceMaker, IPlugin)
     tapname = "stat_aggregator"
@@ -82,6 +126,14 @@ class AggregatorMaker(object):
     options = Options
 
     def makeService(self, options):
-        return internet.TCPServer(int(options["port"]), AggregatorFactory(options))
+        statsService = MultiService()
+
+        aggServer = internet.TCPServer(int(options["aggregation-port"]), AggregatorFactory(options))
+        aggServer.setServiceParent(statsService)
+
+        responseServer = internet.TCPServer(int(options["port"]), ResponderFactory(options))
+        responseServer.setServiceParent(statsService)
+
+        return statsService
 
 serviceMaker = AggregatorMaker()
