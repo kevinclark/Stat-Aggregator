@@ -64,7 +64,7 @@ class AggregatorProtocol(basic.LineReceiver):
 
     def connectionLost(self, _):
         log.msg("Connection lost")
-        self.factory.server.transport.loseConnection()
+        self.loseConnection()
 
 class AggregatorFactory(protocol.ServerFactory):
     """Factory for our aggregation server"""
@@ -85,11 +85,28 @@ class AggregatorFactory(protocol.ServerFactory):
 class ResponderProtocol(basic.LineReceiver):
     """Protocol for returning stats data"""
 
+    client = None
+
     def connectionMade(self):
         log.msg("There's been a connection")
 
     def lineReceived(self, line):
         log.msg("Received line: %s" % line)
+        
+        try:
+            timestamp = int(line)
+        except ValueError:
+            log.msg("Bad timestamp")
+            # TODO: Respond with an error
+
+        data = {}
+        
+        for name, datapoints in buffers.items():
+            log.msg("Name: %s Datapoints: %r" % (name, datapoints))
+            data[name] = [ (dp.timestamp , dp.data) for dp in datapoints.buffer
+                                                        if dp is not None and dp.timestamp > timestamp ]
+
+        self.sendLine(json.dumps(data))
 
     def connectionLost(self, _):
         log.msg("Connection lost")
