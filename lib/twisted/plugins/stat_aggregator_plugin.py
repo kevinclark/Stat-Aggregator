@@ -7,31 +7,15 @@ from twisted.internet import protocol
 
 from zope.interface import implements
 
+from stataggregator.datapoint import DataPoint
+from stataggregator.circularbuffer import CircularBuffer
+
 import simplejson as json
 import time
 
 JSONDecodeError = json.decoder.JSONDecodeError
 
 buffers = {}
-
-# TODO: Pull this out
-class CircularBuffer:
-    def __init__(self, size):
-        self.buffer = [None for i in xrange(size)]
-
-    def put(self, data):
-        self.buffer.append(data)
-        self.buffer.pop(0)
-
-
-class DataPoint:
-    def __init__(self, data):
-        self.data = data
-        self.timestamp = time.time()
-
-    def __repr__(self):
-        return "%s: %r" % (self.data, self.timestamp)
-
 
 # TODO: Pull this out too
 class AggregatorProtocol(basic.LineReceiver):
