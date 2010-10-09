@@ -1,5 +1,5 @@
 #
-#  stat.py
+#  stats.py
 #  Stat-Aggregator
 #
 #  Copyright 2010 The Stat-Aggregator Authors. All Rights Reserved.
@@ -33,7 +33,7 @@ def init():
 	__statTracker = StatTracker()
 
 
-def incrementStat(self, name):
+def incrementStat(name):
 	global __statTracker
 	__statTracker.incrementStat(name)
 
@@ -52,7 +52,7 @@ class StatTracker(object):
 
 
 	def incrementStat(self, name):
-		stats[name] = stats.get(name, 0) + 1
+		self.stats[name] = self.stats.get(name, 0) + 1
 
 
 	def __getStatsToSend(self):
