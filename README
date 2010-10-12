@@ -1,1 +1,4 @@
-stat aggregator is a local stats aggregator
+Stat-Aggregator is a server and client library for stats collection per machine. The client library sends async json messages to the server with key value pairs to be stored. The values are stored in a circular buffer, and can be retrieved on a listening port with the timestamp of the last seen value or 0 for all results.
+
+This is very early stage, and should be considered unstable (and mostly trivial so far).
+
