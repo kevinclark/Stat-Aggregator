@@ -48,7 +48,7 @@ class AggregatorProtocol(basic.LineReceiver):
 
     def connectionLost(self, _):
         log.msg("Connection lost")
-        self.loseConnection()
+        self.transport.loseConnection()
 
 class AggregatorFactory(protocol.ServerFactory):
     """Factory for our aggregation server"""
@@ -87,14 +87,16 @@ class ResponderProtocol(basic.LineReceiver):
         
         for name, datapoints in buffers.items():
             log.msg("Name: %s Datapoints: %r" % (name, datapoints))
-            data[name] = [ (dp.timestamp , dp.data) for dp in datapoints.buffer
-                                                        if dp is not None and dp.timestamp > timestamp ]
+            data[name] = [ (dp.timestamp , dp.data)
+                                for dp in datapoints.buffer
+                                if dp is not None
+                                    and dp.timestamp > timestamp ]
 
         self.sendLine(json.dumps(data))
 
     def connectionLost(self, _):
         log.msg("Connection lost")
-        self.loseConnection()
+        self.transport.loseConnection()
 
 # TODO: Extract to class this and AggregatorFactory
 #       When you do this, it's going to mess up logging messages
